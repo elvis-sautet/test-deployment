@@ -12,6 +12,27 @@ error_exit() {
   exit 1
 }
 
+# Function to handle push failures with retry
+push_with_retry() {
+  local branch=$1
+  local retries=3
+  local count=0
+
+  while [ $count -lt $retries ]; do
+    echo -e "${YELLOW}Pushing branch ${GREEN}$branch${YELLOW}...${NC}"
+    if git push origin "$branch"; then
+      echo -e "${GREEN}Push successful!${NC}"
+      return 0
+    else
+      echo -e "${RED}Push failed. Retrying...${NC}"
+      count=$((count + 1))
+      sleep 2
+    fi
+  done
+
+  error_exit "Failed to push branch $branch after $retries attempts."
+}
+
 # Ensure Git is initialized
 if [ ! -d .git ]; then
   echo -e "${YELLOW}No Git repository found. Initializing...${NC}"
@@ -24,7 +45,7 @@ if [ ! -d .git ]; then
   git checkout -b main || error_exit "Failed to create main branch."
   git add . || error_exit "Failed to stage files."
   git commit -m "Initial commit" || error_exit "Failed to commit changes."
-  git push -u origin main || error_exit "Failed to push main branch to remote."
+  push_with_retry "main" || error_exit "Failed to push main branch to remote."
 fi
 
 # Function to ensure the working directory is clean
@@ -53,8 +74,8 @@ if [ "$current_branch" != "main" ]; then
     git commit -m "$commit_message" || error_exit "Failed to commit changes."
   fi
   
-  # Push the current branch
-  git push origin "$current_branch" || error_exit "Failed to push changes to remote branch $current_branch."
+  # Push the current branch with retry logic
+  push_with_retry "$current_branch"
 
   # Update the main branch
   ensure_clean_working_directory
@@ -76,29 +97,46 @@ else
   git pull origin main || error_exit "Failed to pull changes from main branch."
 fi
 
+# Function to get a new tag if the current one exists
+get_new_tag() {
+  local base_tag=$1
+  local new_tag=$base_tag
+  local increment=1
+
+  # Fetch remote tags
+  git fetch --tags
+
+  # Check if the tag exists
+  while git rev-parse "$new_tag" >/dev/null 2>&1; do
+    echo -e "${YELLOW}Tag $new_tag already exists. Generating a new tag...${NC}"
+    # Increment the version
+    new_tag=$(echo $base_tag | awk -F. -v OFS=. '{$NF += increment; increment=0; print}')
+  done
+
+  echo "$new_tag"
+}
+
 # Check for version bump and tag if necessary
 echo -e "${YELLOW}Checking for version bump...${NC}"
 latest_tag=$(git describe --tags --abbrev=0 2>/dev/null)
 
 if [ -z "$latest_tag" ]; then
   echo -e "${YELLOW}No existing tags found. Starting with v0.1.0${NC}"
-  new_tag="v0.1.0"
+  base_tag="v0.1.0"
 else
   echo -e "${GREEN}Latest tag found: ${latest_tag}${NC}"
-  # Determine the new tag based on the commit type
+  # Determine the base tag for incrementing
   if [[ "$commit_message" =~ ^feat ]]; then
-    new_tag=$(echo $latest_tag | awk -F. -v OFS=. '{$2++; $3=0; print}')
+    base_tag=$(echo $latest_tag | awk -F. -v OFS=. '{$2++; $3=0; print}')
   elif [[ "$commit_message" =~ ^fix ]]; then
-    new_tag=$(echo $latest_tag | awk -F. -v OFS=. '{$3++; print}')
+    base_tag=$(echo $latest_tag | awk -F. -v OFS=. '{$3++; print}')
   else
-    new_tag=$(echo $latest_tag | awk -F. -v OFS=. '{$3++; print}')
+    base_tag=$(echo $latest_tag | awk -F. -v OFS=. '{$3++; print}')
   fi
 fi
 
-# Ensure the new tag does not already exist
-if git rev-parse "$new_tag" >/dev/null 2>&1; then
-  error_exit "Tag $new_tag already exists. Please use a different tag."
-fi
+# Get a new tag if the base tag already exists
+new_tag=$(get_new_tag "$base_tag")
 
 # Tag the commit
 echo -e "${YELLOW}Tagging commit with ${GREEN}${new_tag}${NC}"
@@ -106,6 +144,6 @@ git tag -a "$new_tag" -m "Release $new_tag" || error_exit "Failed to tag the com
 
 # Push the new tag to the remote
 echo -e "${YELLOW}Pushing tag ${GREEN}${new_tag}${YELLOW} to remote...${NC}"
-git push origin "$new_tag" || error_exit "Failed to push the tag to remote."
+push_with_retry "$new_tag"
 
 echo -e "${GREEN}All done! Code is pushed and tagged as necessary.${NC}"
