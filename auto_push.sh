@@ -75,9 +75,53 @@ if [ "$current_branch" != "main" ]; then
   # Stage and commit changes if necessary
   if [ -n "$(git status --porcelain)" ]; then
     git add . || error_exit "Failed to stage changes."
-    echo -e "${GREEN}Enter a conventional commit message (e.g., feat: add new feature, fix: correct a bug):${NC}"
-    read -r commit_message
-    git commit -m "$commit_message" || error_exit "Failed to commit changes."
+
+    # Display and select conventional commit type
+    echo -e "${YELLOW}Select a commit type from the following options:${NC}"
+    echo -e "${GREEN}1) feat: A new feature${NC}"
+    echo -e "${GREEN}2) fix: A bug fix${NC}"
+    echo -e "${GREEN}3) chore: A routine task${NC}"
+    echo -e "${GREEN}4) docs: Documentation changes${NC}"
+    echo -e "${GREEN}5) style: Code style changes (formatting, missing semicolons, etc.)${NC}"
+    echo -e "${GREEN}6) refactor: Code changes that neither fix a bug nor add a feature${NC}"
+    echo -e "${GREEN}7) perf: Performance improvements${NC}"
+    echo -e "${GREEN}8) test: Adding or updating tests${NC}"
+    echo -e "${GREEN}9) build: Build system changes${NC}"
+    echo -e "${GREEN}10) ci: Continuous integration changes${NC}"
+
+    commit_type=""
+    while [[ ! "$commit_type" =~ ^(feat|fix|chore|docs|style|refactor|perf|test|build|ci)$ ]]; do
+      echo -e "${YELLOW}Enter the number corresponding to your commit type (1-10):${NC}"
+      read -r commit_choice
+      case "$commit_choice" in
+        1) commit_type="feat" ;;
+        2) commit_type="fix" ;;
+        3) commit_type="chore" ;;
+        4) commit_type="docs" ;;
+        5) commit_type="style" ;;
+        6) commit_type="refactor" ;;
+        7) commit_type="perf" ;;
+        8) commit_type="test" ;;
+        9) commit_type="build" ;;
+        10) commit_type="ci" ;;
+        *) echo -e "${RED}Invalid choice. Please enter a number from 1 to 10.${NC}" ;;
+      esac
+    done
+
+    # Prompt for commit message
+    echo -e "${YELLOW}Enter a description for your commit:${NC}"
+    read -r commit_description
+
+    # Confirm commit type and description
+    echo -e "${GREEN}You have selected ${YELLOW}$commit_type${GREEN} with the message: ${YELLOW}$commit_description${NC}"
+    echo -e "${YELLOW}Is this correct? (yes/no):${NC}"
+    read -r confirm
+    if [[ "$confirm" != "yes" ]]; then
+      echo -e "${RED}Aborting commit.${NC}"
+      exit 1
+    fi
+
+    git commit -m "$commit_type: $commit_description" || error_exit "Failed to commit changes."
   fi
 
   # Check if the remote branch exists before pushing
@@ -137,9 +181,9 @@ if [ -z "$latest_tag" ]; then
 else
   echo -e "${GREEN}Latest tag found: ${latest_tag}${NC}"
   # Determine the base tag for incrementing
-  if [[ "$commit_message" =~ ^feat ]]; then
+  if [[ "$commit_type" == "feat" ]]; then
     base_tag=$(echo $latest_tag | awk -F. -v OFS=. '{$2++; $3=0; print}')
-  elif [[ "$commit_message" =~ ^fix ]]; then
+  elif [[ "$commit_type" == "fix" ]]; then
     base_tag=$(echo $latest_tag | awk -F. -v OFS=. '{$3++; print}')
   else
     base_tag=$(echo $latest_tag | awk -F. -v OFS=. '{$3++; print}')
