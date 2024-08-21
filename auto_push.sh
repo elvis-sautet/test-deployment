@@ -171,6 +171,12 @@ get_new_tag() {
   echo "$new_tag"
 }
 
+# Function to detect breaking changes in commit messages
+has_breaking_change() {
+  local commit_message=$1
+  [[ $commit_message == *"BREAKING CHANGE"* ]] || [[ $commit_message == *"BREAKING CHANGE:"* ]]
+}
+
 # Check for version bump and tag if necessary
 echo -e "${YELLOW}Checking for version bump...${NC}"
 latest_tag=$(git describe --tags --abbrev=0 2>/dev/null)
@@ -181,13 +187,16 @@ if [ -z "$latest_tag" ]; then
 else
   echo -e "${GREEN}Latest tag found: ${latest_tag}${NC}"
   # Determine the base tag for incrementing
-  if [[ "$commit_type" == "feat" ]]; then
-    base_tag=$(echo $latest_tag | awk -F. -v OFS=. '{$2++; $3=0; print}')
-  elif [[ "$commit_type" == "fix" ]]; then
-    base_tag=$(echo $latest_tag | awk -F. -v OFS=. '{$3++; print}')
+if [[ "$commit_type" == "feat" ]]; then
+  if has_breaking_change "$commit_description"; then
+    base_tag=$(echo $latest_tag | awk -F. -v OFS=. '{$1++; $2=0; $3=0; print}')
   else
-    base_tag=$(echo $latest_tag | awk -F. -v OFS=. '{$3++; print}')
+    base_tag=$(echo $latest_tag | awk -F. -v OFS=. '{$2++; $3=0; print}')
   fi
+elif [[ "$commit_type" == "fix" ]]; then
+  base_tag=$(echo $latest_tag | awk -F. -v OFS=. '{$3++; print}')
+else
+  base_tag=$(echo $latest_tag | awk -F. -v OFS=. '{$3++; print}')
 fi
 
 # Get a new tag if the base tag already exists
