@@ -187,16 +187,18 @@ if [ -z "$latest_tag" ]; then
 else
   echo -e "${GREEN}Latest tag found: ${latest_tag}${NC}"
   # Determine the base tag for incrementing
-if [[ "$commit_type" == "feat" ]]; then
-  if has_breaking_change "$commit_description"; then
+  if [[ "$commit_type" == "feat" ]]; then
+   if has_breaking_change "$commit_description"; then
     base_tag=$(echo $latest_tag | awk -F. -v OFS=. '{$1++; $2=0; $3=0; print}')
-  else
+   else
     base_tag=$(echo $latest_tag | awk -F. -v OFS=. '{$2++; $3=0; print}')
+   fi
+  elif [[ "$commit_type" == "fix" ]]; then
+   base_tag=$(echo $latest_tag | awk -F. -v OFS=. '{$3++; print}')
+  else
+   base_tag=$(echo $latest_tag | awk -F. -v OFS=. '{$3++; print}')
   fi
-elif [[ "$commit_type" == "fix" ]]; then
-  base_tag=$(echo $latest_tag | awk -F. -v OFS=. '{$3++; print}')
-else
-  base_tag=$(echo $latest_tag | awk -F. -v OFS=. '{$3++; print}')
+  echo -e "${YELLOW}Base tag for incrementing: ${base_tag}${NC}"
 fi
 
 # Get a new tag if the base tag already exists
