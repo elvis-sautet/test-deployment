@@ -6,7 +6,8 @@ import "./App.css";
 function App() {
   const [count, setCount] = useState(0);
 
-  // Try changing the text below and see it live-updated
+
+  // NEW CHANGES TO THE DEV BRANCH, FIX A BUG and fixes
 
   return (
     <>
