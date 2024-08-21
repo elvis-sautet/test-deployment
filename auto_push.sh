@@ -190,6 +190,7 @@ else
   if [[ "$commit_type" == "feat" ]]; then
    if has_breaking_change "$commit_description"; then
     base_tag=$(echo $latest_tag | awk -F. -v OFS=. '{$1++; $2=0; $3=0; print}')
+    echo -e "${YELLOW}Breaking change detected. Incrementing major version.${NC}"
    else
     base_tag=$(echo $latest_tag | awk -F. -v OFS=. '{$2++; $3=0; print}')
    fi
