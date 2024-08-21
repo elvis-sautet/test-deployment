@@ -9,7 +9,7 @@ function App() {
   // NEW CHANGES TO THE DEV BRANCH, FIX A BUG and fixes: A new feauture now and changes in effective agin feature
 
   return (
-    <>
+    <div>
       <div>
         <a href="https://vitejs.dev" target="_blank">
           <img src={viteLogo} className="logo" alt="Vite logo" />
@@ -30,7 +30,7 @@ function App() {
       <p className="read-the-docs">
         Click on the Vite and React logos to learn more
       </p>
-    </>
+    </div>
   );
 }
 
