@@ -6,7 +6,7 @@ import "./App.css";
 function App() {
   const [count, setCount] = useState(0);
 
-  // NEW CHANGES TO THE DEV BRANCH, FIX A BUG and fixes: A new feauture now and changes in effective
+  // NEW CHANGES TO THE DEV BRANCH, FIX A BUG and fixes: A new feauture now and changes in effective agin feature
 
   return (
     <>
