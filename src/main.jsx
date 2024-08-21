@@ -5,7 +5,7 @@ import "./index.css";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
-    {/* enabled strict mode */}
+    {/* enabled strict mode and enhanced tagging */}
     <App />
   </StrictMode>
 );
