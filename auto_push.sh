@@ -85,6 +85,7 @@ if [ -z "$latest_tag" ]; then
   new_tag="v0.1.0"
 else
   echo -e "${GREEN}Latest tag found: ${latest_tag}${NC}"
+  # Determine the new tag based on the commit type
   if [[ "$commit_message" =~ ^feat ]]; then
     new_tag=$(echo $latest_tag | awk -F. -v OFS=. '{$2++; $3=0; print}')
   elif [[ "$commit_message" =~ ^fix ]]; then
@@ -94,9 +95,17 @@ else
   fi
 fi
 
+# Ensure the new tag does not already exist
+if git rev-parse "$new_tag" >/dev/null 2>&1; then
+  error_exit "Tag $new_tag already exists. Please use a different tag."
+fi
+
 # Tag the commit
 echo -e "${YELLOW}Tagging commit with ${GREEN}${new_tag}${NC}"
 git tag -a "$new_tag" -m "Release $new_tag" || error_exit "Failed to tag the commit."
+
+# Push the new tag to the remote
+echo -e "${YELLOW}Pushing tag ${GREEN}${new_tag}${YELLOW} to remote...${NC}"
 git push origin "$new_tag" || error_exit "Failed to push the tag to remote."
 
 echo -e "${GREEN}All done! Code is pushed and tagged as necessary.${NC}"
