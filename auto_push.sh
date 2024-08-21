@@ -33,6 +33,12 @@ push_with_retry() {
   error_exit "Failed to push branch $branch after $retries attempts."
 }
 
+# Function to check if a branch exists on the remote
+branch_exists() {
+  local branch=$1
+  git ls-remote --heads origin "$branch" | grep -q "$branch"
+}
+
 # Ensure Git is initialized
 if [ ! -d .git ]; then
   echo -e "${YELLOW}No Git repository found. Initializing...${NC}"
@@ -65,7 +71,7 @@ current_branch=$(git branch --show-current)
 # Ensure we're on the correct branch before pushing
 if [ "$current_branch" != "main" ]; then
   echo -e "${YELLOW}Pushing current branch ${GREEN}$current_branch${YELLOW}...${NC}"
-  
+
   # Stage and commit changes if necessary
   if [ -n "$(git status --porcelain)" ]; then
     git add . || error_exit "Failed to stage changes."
@@ -73,9 +79,14 @@ if [ "$current_branch" != "main" ]; then
     read -r commit_message
     git commit -m "$commit_message" || error_exit "Failed to commit changes."
   fi
-  
-  # Push the current branch with retry logic
-  push_with_retry "$current_branch"
+
+  # Check if the remote branch exists before pushing
+  if branch_exists "$current_branch"; then
+    push_with_retry "$current_branch"
+  else
+    echo -e "${YELLOW}Remote branch $current_branch does not exist. Creating it...${NC}"
+    git push --set-upstream origin "$current_branch" || error_exit "Failed to create and push new branch $current_branch."
+  fi
 
   # Update the main branch
   ensure_clean_working_directory
@@ -138,9 +149,13 @@ fi
 # Get a new tag if the base tag already exists
 new_tag=$(get_new_tag "$base_tag")
 
+# Prompt for tag message
+echo -e "${GREEN}Enter a message for the tag ${YELLOW}$new_tag${GREEN}:${NC}"
+read -r tag_message
+
 # Tag the commit
-echo -e "${YELLOW}Tagging commit with ${GREEN}${new_tag}${NC}"
-git tag -a "$new_tag" -m "Release $new_tag" || error_exit "Failed to tag the commit."
+echo -e "${YELLOW}Tagging commit with ${GREEN}${new_tag}${YELLOW}...${NC}"
+git tag -a "$new_tag" -m "$tag_message" || error_exit "Failed to tag the commit."
 
 # Push the new tag to the remote
 echo -e "${YELLOW}Pushing tag ${GREEN}${new_tag}${YELLOW} to remote...${NC}"
